@@ -11,9 +11,9 @@ import static org.quartz.TriggerBuilder.*;
 import static org.quartz.SimpleScheduleBuilder.*;
 
 public class AlertRabbit {
-    private static Properties config = initConfig();
 
     public static void main(String[] args) {
+        Properties config = initConfig();
         try {
             Scheduler scheduler = StdSchedulerFactory.getDefaultScheduler();
             scheduler.start();

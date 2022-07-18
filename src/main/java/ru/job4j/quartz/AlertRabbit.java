@@ -4,6 +4,9 @@ import org.quartz.*;
 import org.quartz.impl.StdSchedulerFactory;
 
 import java.io.InputStream;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.util.Properties;
 
 import static org.quartz.JobBuilder.*;
@@ -12,8 +15,9 @@ import static org.quartz.SimpleScheduleBuilder.*;
 
 public class AlertRabbit {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws Exception {
         Properties config = initConfig();
+        Connection connection = initConnection(config);
         try {
             Scheduler scheduler = StdSchedulerFactory.getDefaultScheduler();
             scheduler.start();
@@ -38,10 +42,27 @@ public class AlertRabbit {
         }
     }
 
+    private static Connection initConnection(Properties config)
+            throws ClassNotFoundException, SQLException {
+        Class.forName(config.getProperty("driver-class-name"));
+        try (Connection cn = DriverManager.getConnection(
+                config.getProperty("url"),
+                config.getProperty("username"),
+                config.getProperty("password")
+        )) {
+            return cn;
+        } catch (SQLException e) {
+            throw new SQLException(e);
+        } catch (Exception e) {
+            throw new IllegalStateException(e);
+        }
+
+    }
+
     private static Properties initConfig() {
         Properties config;
         try (InputStream in = AlertRabbit.class.getClassLoader()
-                .getResourceAsStream("log4j.properties")) {
+                .getResourceAsStream("rabbit.properties")) {
             config = new Properties();
             config.load(in);
         } catch (Exception e) {

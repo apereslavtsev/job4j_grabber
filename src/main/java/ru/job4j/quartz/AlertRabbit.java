@@ -18,16 +18,16 @@ public class AlertRabbit implements AutoCloseable {
     private Connection connection;
     private Properties config;
 
+    public AlertRabbit() {
+        initConnection();
+    }
+
     public Connection getConnection() {
         return connection;
     }
 
     public Properties getConfig() {
         return config;
-    }
-
-    public AlertRabbit() {
-        initConnection();
     }
 
     public static void main(String[] args) throws Exception {
@@ -40,7 +40,8 @@ public class AlertRabbit implements AutoCloseable {
                     .usingJobData(data)
                     .build();
             SimpleScheduleBuilder times = simpleSchedule()
-                    .withIntervalInSeconds(Integer.parseInt(rabbit.getConfig().getProperty("rabbit.interval")))
+                    .withIntervalInSeconds(Integer.parseInt(
+                            rabbit.getConfig().getProperty("rabbit.interval")))
                     .repeatForever();
             Trigger trigger = newTrigger()
                     .startNow()
@@ -58,8 +59,10 @@ public class AlertRabbit implements AutoCloseable {
         @Override
         public void execute(JobExecutionContext context) throws JobExecutionException {
             System.out.println("Rabbit runs here ...");
-            Connection cn = (Connection) context.getJobDetail().getJobDataMap().get("connection");
-            try (PreparedStatement ps = cn.prepareStatement("insert into rabbit(created_date) values (?)")) {
+            Connection cn = (Connection) context.getJobDetail()
+                    .getJobDataMap().get("connection");
+            try (PreparedStatement ps = cn.prepareStatement(
+                    "insert into rabbit(created_date) values (?)")) {
                 ps.setTimestamp(1, new Timestamp(System.currentTimeMillis()));
                 ps.execute();
             } catch (SQLException e) {

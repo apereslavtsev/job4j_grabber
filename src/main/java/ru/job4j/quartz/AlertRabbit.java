@@ -14,34 +14,21 @@ import static org.quartz.JobBuilder.*;
 import static org.quartz.TriggerBuilder.*;
 import static org.quartz.SimpleScheduleBuilder.*;
 
-public class AlertRabbit implements AutoCloseable {
-    private Connection connection;
-    private Properties config;
-
-    public AlertRabbit() {
-        initConnection();
-    }
-
-    public Connection getConnection() {
-        return connection;
-    }
-
-    public Properties getConfig() {
-        return config;
-    }
+public class AlertRabbit {
 
     public static void main(String[] args) throws Exception {
-        try (AlertRabbit rabbit = new AlertRabbit()) {
+        Properties config = initConfig();
+        try (Connection connection = initConnection(config)) {
             Scheduler scheduler = StdSchedulerFactory.getDefaultScheduler();
             scheduler.start();
             JobDataMap data = new JobDataMap();
-            data.put("connection", rabbit.getConnection());
+            data.put("connection", connection);
             JobDetail job = newJob(Rabbit.class)
                     .usingJobData(data)
                     .build();
             SimpleScheduleBuilder times = simpleSchedule()
                     .withIntervalInSeconds(Integer.parseInt(
-                            rabbit.getConfig().getProperty("rabbit.interval")))
+                            config.getProperty("rabbit.interval")))
                     .repeatForever();
             Trigger trigger = newTrigger()
                     .startNow()
@@ -50,8 +37,6 @@ public class AlertRabbit implements AutoCloseable {
             scheduler.scheduleJob(job, trigger);
             Thread.sleep(10000);
             scheduler.shutdown();
-        } catch (SchedulerException se) {
-            se.printStackTrace();
         }
     }
 
@@ -71,30 +56,19 @@ public class AlertRabbit implements AutoCloseable {
         }
     }
 
-    @Override
-    public void close() throws Exception {
-        if (connection != null) {
-            connection.close();
-        }
+    private static Connection initConnection(Properties config)
+            throws ClassNotFoundException, SQLException {
+        Class.forName(config.getProperty("driver-class-name"));
+        return DriverManager.getConnection(
+                config.getProperty("url"),
+                config.getProperty("username"),
+                config.getProperty("password")
+        );
+
     }
 
-    private void initConnection() {
-        if (config == null) {
-            initConfig();
-        }
-        try {
-            Class.forName(config.getProperty("driver-class-name"));
-            connection = DriverManager.getConnection(
-                    config.getProperty("url"),
-                    config.getProperty("username"),
-                    config.getProperty("password")
-            );
-        } catch (SQLException | ClassNotFoundException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private void initConfig() {
+    private static Properties initConfig() {
+        Properties config;
         try (InputStream in = AlertRabbit.class.getClassLoader()
                 .getResourceAsStream("rabbit.properties")) {
             config = new Properties();
@@ -102,5 +76,6 @@ public class AlertRabbit implements AutoCloseable {
         } catch (Exception e) {
             throw new IllegalArgumentException();
         }
+        return config;
     }
 }
